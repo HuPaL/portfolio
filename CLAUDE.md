@@ -14,11 +14,20 @@ Node `^22.18 || >=24.12`.
 - `npm run lint` — oxlint then ESLint, **both with `--fix`** (they modify files).
 - `npm run format` — Prettier, `src/` only.
 - `npm run test:unit` — Vitest in watch mode. One file: `npx vitest run src/__tests__/App.spec.ts`; one test: `npx vitest run -t "name"`.
-- `npm run test:e2e -- --project=chromium e2e/vue.spec.ts` — Playwright; first run needs `npx playwright install`. Locally it starts `npm run dev` (:5173); with `CI` set it uses `npm run preview` (:4173), so `build` first.
+- `npm run test:e2e -- --project=chromium e2e/vue.spec.ts` — Playwright (includes axe a11y and 3D explorer specs); first run needs `npx playwright install chromium`. Locally it starts `npm run dev` (:5173) and **reuses any server already on that port** (a stale one makes `page.goto` time out); with `CI=1` it uses `npm run preview` (:4173), so run `npm run build-only` first.
 
 ## Current state vs. target
 
-The repo is a fresh `create-vue` scaffold migrated to TypeScript: `App.vue` is still the "You did it!" placeholder, `routes: []`, `stores/counter.ts` is scaffold leftover. Three.js, TresJS, GSAP and Tailwind are **not installed yet**; the folders `components/composables/data/types/styles` do not exist yet. Treat the sections below as the target, not as existing facts. The repo is not under git.
+Phase 1 (2D portfolio: boot screen, hero, about, skills, projects, AI lab, experience, contact) and Phase 2 (opt-in 3D explorer) are implemented. `stores/counter.ts`, `jsconfig.json` and the empty router are scaffold leftovers. GSAP is **not** installed (camera motion uses exponential lerp in the render loop). The repo is not under git.
+
+### Architecture notes
+- **Content is data.** All copy lives in typed `src/data/*.ts` (`types/portfolio.ts`); section components only render it. `data/sections.ts` also holds each section's 3D node (position, colour, radius).
+- **3D explorer is progressive enhancement and opt-in.** `useExploreSupport` gates the "Explore in 3D" button (WebGL available, no `prefers-reduced-motion`, width ≥ 768px, no data-saver). `components/layout/exploreAsync.ts` loads `src/scene/ExploreView.vue` (three + TresJS, its own ~163 kB gzip chunk) only after the click. Without it the 2D page is unchanged.
+- **three.js is trimmed on purpose.** TresJS runs `extend(THREE)` with the whole namespace, which kills tree-shaking. `vite.config.ts` therefore aliases the exact import `three` to `src/scene/three-lite.ts`, a barrel re-exporting only what the scene and TresJS internals need (explorer chunk 208 → 163 kB gzip). **When you use a new Tres element (e.g. `<TresTorusGeometry>`), add its class to `three-lite.ts`**; otherwise it fails at runtime with "X is not defined on the THREE namespace" (the e2e test "renders without console errors" guards this). After upgrading `three` or `@tresjs/core`, a build may report `MISSING_EXPORT`; add the named classes it lists.
+- **Content is never duplicated in 3D.** A zone opens the same section component in `ZonePanel`. While exploring, the regular `<main>` is unmounted (`v-if` in `App.vue`) so section ids never collide; the canvas is `aria-hidden` and a DOM zone menu mirrors the nodes.
+- **TresJS quirks.** `vite.config.ts` spreads `@tresjs/core/template-compiler-options` into the Vue plugin. Tres listens for lowercase `onPointerenter`/`onPointerleave`, so write `@pointerenter` (not `@pointer-enter`). Raycasting happens on pointer move, so a `click` with no prior move over a node does not register.
+- **Boot screen** page-behind uses `inert`; pass `undefined`, never `false` (Vue renders `inert="false"`, which still blocks the page).
+- **Windows/PowerShell 5.1:** `Set-Content -Encoding utf8` writes a BOM; avoid it for project files.
 
 ## Tooling notes
 

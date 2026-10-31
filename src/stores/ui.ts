@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { SectionId } from '@/types/portfolio'
 
 export type DeviceTier = 'low' | 'high'
 
@@ -23,6 +24,12 @@ export const useUiStore = defineStore('ui', () => {
   const bootDone = ref(shouldSkipBoot())
   const deviceTier = ref<DeviceTier>('high')
 
+  /** Opt-in 3D explorer. The regular page is unmounted while it is active. */
+  const exploreMode = ref(false)
+  const activeZone = ref<SectionId | null>(null)
+  /** Last zone opened in the explorer; used to restore position on exit. */
+  const lastZone = ref<SectionId | null>(null)
+
   function finishBoot() {
     bootDone.value = true
     try {
@@ -36,5 +43,35 @@ export const useUiStore = defineStore('ui', () => {
     deviceTier.value = tier
   }
 
-  return { bootDone, deviceTier, finishBoot, setDeviceTier }
+  function enterExplore() {
+    exploreMode.value = true
+  }
+
+  function exitExplore() {
+    exploreMode.value = false
+    activeZone.value = null
+  }
+
+  function openZone(id: SectionId) {
+    activeZone.value = id
+    lastZone.value = id
+  }
+
+  function closeZone() {
+    activeZone.value = null
+  }
+
+  return {
+    bootDone,
+    deviceTier,
+    exploreMode,
+    activeZone,
+    lastZone,
+    finishBoot,
+    setDeviceTier,
+    enterExplore,
+    exitExplore,
+    openZone,
+    closeZone,
+  }
 })

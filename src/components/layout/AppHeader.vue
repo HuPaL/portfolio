@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ExploreToggle from '@/components/layout/ExploreToggle.vue'
 import { sections } from '@/data/sections'
 import type { SectionId } from '@/types/portfolio'
 
-defineProps<{ activeId: SectionId }>()
+defineProps<{ activeId: SectionId; exploreSupported?: boolean }>()
 
 const open = ref(false)
 </script>
@@ -39,12 +40,14 @@ const open = ref(false)
           :key="s.id"
           :href="`#${s.id}`"
           :aria-current="activeId === s.id ? 'true' : undefined"
-          class="rounded-md px-3 py-1.5 text-sm text-(--color-muted) transition-colors hover:text-(--color-text) aria-[current=true]:text-(--color-accent)"
+          class="rounded-md px-2 py-1.5 text-sm whitespace-nowrap text-(--color-muted) lg:px-3 transition-colors hover:text-(--color-text) aria-[current=true]:text-(--color-accent)"
           @click="open = false"
         >
           {{ s.label }}
         </a>
       </nav>
+
+      <ExploreToggle v-if="exploreSupported" class="hidden sm:inline-block" />
     </div>
   </header>
 </template>
