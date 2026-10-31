@@ -1,0 +1,15 @@
+@theme {
+  --color-bg: #07090f;
+  --color-surface: #0e121b;
+  --color-border: rgb(255 255 255 / 0.08);
+  --color-text: #e6e9f0;
+  --color-muted: #9aa3b5;
+  --color-accent: #6ee7d8;
+  --color-accent-2: #8b9bff;
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', monospace;
+
+  --radius-panel: 1rem;
+  --shadow-glow: 0 0 32px rgb(110 231 216 / 0.12);
+}
