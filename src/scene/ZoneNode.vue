@@ -10,7 +10,6 @@ const props = defineProps<{
   active: boolean
   hovered: boolean
 }>()
-const emit = defineEmits<{ select: []; hover: [hovered: boolean] }>()
 
 const mesh = ref<Mesh | null>(null)
 const glow = computed(() => (props.active ? 0.7 : props.hovered ? 0.5 : 0.25))
@@ -28,13 +27,8 @@ onBeforeRender(({ elapsed }) => {
 </script>
 
 <template>
-  <TresMesh
-    ref="mesh"
-    :position="section.node.position"
-    @click="emit('select')"
-    @pointerenter="emit('hover', true)"
-    @pointerleave="emit('hover', false)"
-  >
+  <!-- `userData.zoneId` is what ConstellationScene.pick() reads from raycast hits. -->
+  <TresMesh ref="mesh" :position="section.node.position" :user-data="{ zoneId: section.id }">
     <TresSphereGeometry :args="[section.node.radius, 32, 32]" />
     <TresMeshStandardMaterial
       :color="section.node.color"

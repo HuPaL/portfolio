@@ -10,6 +10,20 @@ async function openExplorer(page: Page) {
   await expect(page.getByRole('region', { name: '3D explorer' })).toBeVisible({ timeout: 15_000 })
 }
 
+/** The fly-in has settled once the Home label (drawn under its node) sits at the viewport centre. */
+async function waitForFlyIn(page: Page, width: number) {
+  const homeLabel = page.locator('span', { hasText: /^Home$/ })
+  await expect
+    .poll(
+      async () => {
+        const box = await homeLabel.boundingBox()
+        return box ? Math.abs(box.x + box.width / 2 - width / 2) : Number.POSITIVE_INFINITY
+      },
+      { timeout: 15_000 },
+    )
+    .toBeLessThan(2)
+}
+
 test.describe('3D explorer', () => {
   test.beforeEach(async ({ page }) => skipBoot(page))
 
@@ -39,6 +53,15 @@ test.describe('3D explorer', () => {
     await page.locator('[data-zone-button="projects"]').click()
     const dialog = page.getByRole('dialog', { name: 'Projects' })
     await expect(dialog).toBeVisible()
+    // "Exit 3D" must stay clickable while a zone is open (not covered by the panel).
+    await expect(page.getByRole('button', { name: 'Exit 3D' })).toBeInViewport()
+    const exit = page.getByRole('button', { name: 'Exit 3D' })
+    const box = await exit.boundingBox()
+    const topmost = await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x ?? 0, y ?? 0)?.textContent?.trim(),
+      [(box?.x ?? 0) + (box?.width ?? 0) / 2, (box?.y ?? 0) + (box?.height ?? 0) / 2],
+    )
+    expect(topmost).toBe('Exit 3D')
     await expect(dialog.getByRole('heading', { level: 2, name: 'Projects' })).toBeVisible()
     await expect(dialog).toBeFocused()
 
@@ -64,24 +87,23 @@ test.describe('3D explorer', () => {
     await openExplorer(page)
     const { width, height } = page.viewportSize() ?? { width: 1280, height: 720 }
 
-    // The fly-in has settled once the Home label (drawn under its node) sits at the viewport centre.
-    const homeLabel = page.locator('span', { hasText: /^Home$/ })
-    await expect
-      .poll(
-        async () => {
-          const box = await homeLabel.boundingBox()
-          return box ? Math.abs(box.x + box.width / 2 - width / 2) : Number.POSITIVE_INFINITY
-        },
-        { timeout: 15_000 },
-      )
-      .toBeLessThan(2)
+    await waitForFlyIn(page, width)
 
-    // Raycasting happens on pointer move, so hover first, then wait for the hover state.
+    // Hovering a node shows the pointer cursor; clicking opens its zone.
     await page.mouse.move(width / 2 - 20, height / 2 - 20)
     await page.mouse.move(width / 2, height / 2, { steps: 5 })
     await expect(page.getByRole('region', { name: '3D explorer' })).toHaveClass(/cursor-pointer/)
-    await page.mouse.down()
-    await page.mouse.up()
+    await page.mouse.click(width / 2, height / 2)
+    await expect(page.getByRole('dialog', { name: 'Home' })).toBeVisible()
+  })
+
+  test('a click on a node works without any prior pointer movement', async ({ page }) => {
+    await page.goto('/')
+    await openExplorer(page)
+    const { width, height } = page.viewportSize() ?? { width: 1280, height: 720 }
+    await waitForFlyIn(page, width)
+    // Playwright's click moves and clicks at once; hit-testing must not depend on a hover first.
+    await page.mouse.click(width / 2, height / 2)
     await expect(page.getByRole('dialog', { name: 'Home' })).toBeVisible()
   })
 
@@ -111,6 +133,25 @@ test.describe('3D explorer', () => {
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze()
     expect(results.violations).toEqual([])
+  })
+})
+
+test.describe('3D explorer on touch devices', () => {
+  test('a tap on a node opens that node’s zone', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: true })
+    const page = await context.newPage()
+    await skipBoot(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Explore in 3D' }).tap()
+    await expect(page.getByRole('region', { name: '3D explorer' })).toBeVisible({ timeout: 15_000 })
+    await waitForFlyIn(page, 1024)
+
+    // Tap the Projects node (drawn just above its label) rather than the centre node.
+    const label = await page.locator('span', { hasText: /^Projects$/ }).boundingBox()
+    expect(label).not.toBeNull()
+    await page.touchscreen.tap((label?.x ?? 0) + (label?.width ?? 0) / 2, (label?.y ?? 0) - 40)
+    await expect(page.getByRole('dialog', { name: 'Projects' })).toBeVisible()
+    await context.close()
   })
 })
 

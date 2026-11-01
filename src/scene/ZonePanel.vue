@@ -34,18 +34,19 @@ function onClick(event: MouseEvent) {
     role="dialog"
     :aria-label="label"
     tabindex="-1"
-    class="glass fixed top-0 right-0 z-10 h-full w-full max-w-xl overflow-y-auto rounded-none border-y-0 border-r-0 bg-(--color-surface)/90 pt-14 outline-none"
+    class="glass glass-flat fixed top-0 right-0 z-10 h-full w-full max-w-xl overflow-y-auto rounded-none border-y-0 border-r-0 pt-14 outline-none"
     @click="onClick"
   >
     <button
       type="button"
-      class="absolute top-3 right-3 rounded-md border border-(--color-border) px-3 py-1.5 text-sm text-(--color-muted) transition-colors hover:text-(--color-text)"
+      class="absolute top-3 left-4 rounded-md border border-(--color-border) px-3 py-1.5 text-sm text-(--color-muted) transition-colors hover:text-(--color-text)"
       @click="emit('close')"
     >
       Close<span class="sr-only"> {{ label }}</span>
     </button>
-    <!-- Sections are authored as full-page blocks; compact them for the panel. -->
-    <div class="[&>section]:min-h-0! [&>section]:py-6!">
+    <!-- Sections are authored as full-page blocks; compact them for the panel. Nested
+         `.glass` cards must not blur either: the backdrop is the animating canvas. -->
+    <div class="[&>section]:min-h-0! [&>section]:py-6! [&_.glass]:[backdrop-filter:none]!">
       <component :is="zoneComponents[sectionId]" />
     </div>
   </div>

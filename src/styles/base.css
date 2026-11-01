@@ -61,3 +61,15 @@
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow-glow);
 }
+
+/*
+ * For panels over the animated WebGL canvas: a backdrop blur there is re-computed every
+ * frame (measured 33 fps with it vs 60 fps without), so use a near-opaque fill instead.
+ * Must stay after `.glass` (same specificity).
+ */
+.glass-flat {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.015)),
+    rgb(14 18 27 / 0.94);
+  backdrop-filter: none;
+}

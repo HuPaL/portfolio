@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useLoop } from '@tresjs/core'
-import { Vector3, type PerspectiveCamera } from 'three'
+import { useLoop, useTres } from '@tresjs/core'
+import { Raycaster, Vector2, Vector3, type PerspectiveCamera } from 'three'
 import StarField from '@/scene/StarField.vue'
 import ZoneNode from '@/scene/ZoneNode.vue'
 import { sections } from '@/data/sections'
@@ -13,7 +13,6 @@ const props = defineProps<{
   /** Plain (non-reactive) map of DOM labels, positioned every frame without Vue re-renders. */
   labels: Partial<Record<SectionId, HTMLElement>>
 }>()
-const emit = defineEmits<{ select: [id: SectionId]; hover: [id: SectionId | null] }>()
 
 const FOV = 40
 // A narrower FOV and a larger distance keep close-up nodes round instead of stretched.
@@ -29,6 +28,28 @@ const projected = new Vector3()
 const worldPos = new Vector3()
 
 const camera = ref<PerspectiveCamera | null>(null)
+const { scene } = useTres()
+const raycaster = new Raycaster()
+const pointer = new Vector2()
+
+/**
+ * Which zone node (if any) is under a viewport position. Picking is done here rather than
+ * through TresJS pointer events so that taps work the same as mouse clicks (raycasting
+ * does not depend on a prior pointer move) and so the canvas never registers with the
+ * TresJS pointer registry, which keeps destroyed canvases alive.
+ */
+function pick(clientX: number, clientY: number): SectionId | null {
+  const cam = camera.value
+  if (!cam) return null
+  pointer.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1)
+  raycaster.setFromCamera(pointer, cam)
+  const hit = raycaster
+    .intersectObjects(scene.value.children, false)
+    .find((i) => typeof i.object.userData.zoneId === 'string')
+  return (hit?.object.userData.zoneId as SectionId | undefined) ?? null
+}
+
+defineExpose({ pick })
 
 watch(
   () => props.activeId,
@@ -99,7 +120,5 @@ onBeforeRender(({ delta }) => {
     :index="i"
     :active="activeId === s.id"
     :hovered="hoveredId === s.id"
-    @select="emit('select', s.id)"
-    @hover="(h) => emit('hover', h ? s.id : null)"
   />
 </template>
